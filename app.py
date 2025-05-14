@@ -1,36 +1,42 @@
 import streamlit as st
+from langchain.memory import ConversationBufferMemory
+
+from utils.configs import *
 
 
-arquivos_validos = ['Site', 'YouTube', 'PDF', 'CSV', 'TXT']
+def carrega_modelo (provedor, modelo, api_key):
+    chat = config_modelos[provedor]['chat'](model=modelo, api_key=api_key)
+    st.session_state['chat'] = chat
 
-config_modelos = {
-    'Groq': {
-        'modelos':['llama-3.1-70b-versatile', 'gemma2-9b-it', 'mixtral-8x7b-32768'],
-        # 'api_key':''
-    },
-    'OpenAI': {
-        'modelos': ['gpt-4o-mini', 'gpt-4o', 'o1-mini']
-    }
-}
-mensagens_exemplo = [
-    ('user', 'oi'),
-    ('assistant', 'Opa, beleza?'),
-    ('user', 'Tudo ótimo'),
-]
 
 def chat_main():
     st.header('Oráculo', divider=True)
-
-    mensagens = st.session_state.get('mensagens', mensagens_exemplo)
-    for role, mensagem in mensagens:
-        with st.chat_message(role):
-            st.markdown(mensagem)
-
+    chat_model = st.session_state.get('chat')
+    memoria = st.session_state.get('memoria', ConversationBufferMemory())
     input_usuario = st.chat_input('Fale com o Oráculo...')
+    
+    if chat_model:
+        with st.sidebar:
+            st.caption(f"🔮 Modelo atual: `{chat_model.model_name}`")
+    
+    for mensagem in memoria.buffer_as_messages:
+        chat = st.chat_message(mensagem.type)
+        chat.markdown(mensagem.content)
+
     if input_usuario:
-        mensagens.append(('user', input_usuario))
-        st.session_state['mensagens'] = mensagens
-        st.rerun()
+        if not chat_model:
+            st.error("Você precisa iniciar o Oráculo primeiro na barra lateral.")
+            return
+        
+        chat = st.chat_message('human')
+        chat.markdown(input_usuario)
+
+        chat = st.chat_message('ai')
+        resposta = chat.write_stream(chat_model.stream(input_usuario))
+
+        memoria.chat_memory.add_ai_message(resposta)
+        st.session_state['memoria'] = memoria
+
 
 def sidebar():
     tabs = st.tabs(['Upload de arquivos', 'Seleção de modelo'])
@@ -57,6 +63,13 @@ def sidebar():
             value=st.session_state.get(f'api_key_{provedor}')
         )
         st.session_state[f'api_key_{provedor}'] = api_key
+        
+
+        if st.button('Iniciar Oráculo', use_container_width=True):
+            if not api_key:
+                st.error('É necessário inserir uma chave de API.')
+                return
+            carrega_modelo(provedor, modelo, api_key)
 
 
 def main():
