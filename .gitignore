@@ -2,6 +2,7 @@
 .env/
 .venv/
 venv/
+utils/__pycache__/
 __pycache__/
 *.py[cod]
 *.pyo

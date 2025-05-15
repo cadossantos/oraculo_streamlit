@@ -4,9 +4,27 @@ from langchain.memory import ConversationBufferMemory
 from utils.configs import *
 
 
-def carrega_modelo (provedor, modelo, api_key):
-    chat = config_modelos[provedor]['chat'](model=modelo, api_key=api_key)
+# def carrega_modelo(provedor, modelo, api_key=None):
+#     chat_class = config_modelos[provedor]['chat']
+    
+#     if provedor == 'Ollama':
+#         chat = chat_class(model=modelo)
+#     else:
+#         chat = chat_class(model=modelo, api_key=api_key)
+
+#     st.session_state['chat'] = chat
+
+def carrega_modelo(provedor, modelo, api_key=None):
+    chat_class = config_modelos[provedor]['chat']
+    
+    if provedor == 'Ollama':
+        chat = chat_class(model=modelo)
+    else:
+        chat = chat_class(model=modelo, api_key=api_key)
+
     st.session_state['chat'] = chat
+    st.session_state['modelo_nome'] = f"{provedor} - {modelo}"
+
 
 
 def chat_main():
@@ -17,7 +35,8 @@ def chat_main():
     
     if chat_model:
         with st.sidebar:
-            st.caption(f"🔮 Modelo atual: `{chat_model.model_name}`")
+            modelo_nome = st.session_state.get('modelo_nome', 'Desconhecido')
+            st.caption(f"🔮 Modelo atual: `{modelo_nome}`")
     
     for mensagem in memoria.buffer_as_messages:
         chat = st.chat_message(mensagem.type)
@@ -57,19 +76,23 @@ def sidebar():
     with tabs[1]:
         provedor = st.selectbox('Selecione o provedor', config_modelos.keys())
         modelo = st.selectbox('Selecione o modelo', config_modelos[provedor]['modelos'])
-        api_key = st.text_input(
-            f'Insira sua chave de API da {provedor}',
-            type='password',
-            value=st.session_state.get(f'api_key_{provedor}')
-        )
-        st.session_state[f'api_key_{provedor}'] = api_key
-        
+
+        if provedor != 'Ollama':
+            api_key = st.text_input(
+                f'Insira sua chave de API da {provedor}',
+                type='password',
+                value=st.session_state.get(f'api_key_{provedor}')
+            )
+            st.session_state[f'api_key_{provedor}'] = api_key
+        else:
+            api_key = None  # Não necessário
 
         if st.button('Iniciar Oráculo', use_container_width=True):
-            if not api_key:
+            if provedor != 'Ollama' and not api_key:
                 st.error('É necessário inserir uma chave de API.')
                 return
             carrega_modelo(provedor, modelo, api_key)
+
 
 
 def main():
