@@ -1,5 +1,10 @@
 # utils/loaders.py
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+from langchain_community.utilities.requests import RequestsWrapper
 from langchain_community.document_loaders import (
     WebBaseLoader,
     YoutubeLoader,
@@ -9,15 +14,23 @@ from langchain_community.document_loaders import (
 )
 
 
-def carrega_site():
+def carrega_site(url):
+    user_agent = os.getenv("USER_AGENT", "Mozilla/5.0")  # fallback
+    wrapper = RequestsWrapper(headers={"User-Agent": user_agent})
     loader = WebBaseLoader(url)
     lista_documentos = loader.load()
     documento = '\n\n'.join([doc.page_content for doc in lista_documentos])
     return documento
 
 
-def carrega_youtube():
-    loader = YoutubeLoader.from_youtube_url(url_yt, add_video_info=False, language='pt')
+def carrega_youtube(url):
+    user_agent = os.getenv("USER_AGENT", "Mozilla/5.0")  # fallback
+    wrapper = RequestsWrapper(headers={"User-Agent": user_agent})
+    loader = YoutubeLoader.from_youtube_url(
+        url,
+        add_video_info=False,
+        language=['pt']
+        )
     lista_documentos = loader.load()
     documento = '\n\n'.join([doc.page_content for doc in lista_documentos])
     return documento
